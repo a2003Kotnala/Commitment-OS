@@ -85,24 +85,6 @@ Work is created conversationally but tracked manually. This project closes that 
 - `GET /api/notifications/list`
 - `POST /api/notifications/mark-read`
 
-## Environment Variables
-
-Create `.env.local` with:
-
-- `NEXT_PUBLIC_APP_URL=http://localhost:3000`
-- `NEXT_PUBLIC_SUPABASE_URL=...`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY=...`
-- `SUPABASE_SERVICE_ROLE_KEY=...`
-- `ANTHROPIC_API_KEY=...` (optional until enabling AI calls)
-- `OPENAI_API_KEY=...` (optional until enabling embeddings/search)
-- `SLACK_CLIENT_ID=...`
-- `SLACK_CLIENT_SECRET=...`
-- `SLACK_SIGNING_SECRET=...`
-- `ZOOM_CLIENT_ID=...`
-- `ZOOM_CLIENT_SECRET=...`
-- `ZOOM_VERIFICATION_TOKEN=...`
-- `GOOGLE_CLIENT_ID=...`
-- `GOOGLE_CLIENT_SECRET=...`
 
 ## Local Setup
 
