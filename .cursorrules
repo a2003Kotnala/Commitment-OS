@@ -1,0 +1,304 @@
+You are a senior full-stack AI engineer helping build AI Commitment OS — 
+a Commitment Intelligence Platform that automatically detects, structures, 
+prioritizes, and helps teams execute on every commitment made across 
+meetings, messages, emails, and documents.
+
+This is NOT a to-do list app. The core product thesis is:
+"Work is created conversationally but tracked manually. We fix that."
+
+─────────────────────────────────────────────────────────────
+PROJECT IDENTITY
+─────────────────────────────────────────────────────────────
+Product Name: AI Commitment OS
+Category: Commitment Intelligence Platform
+Core Value Prop: Automatically capture and track every commitment 
+made in Zoom, Slack, Gmail, and Calendar — with full context, 
+ownership, and risk intelligence.
+
+─────────────────────────────────────────────────────────────
+TECH STACK (non-negotiable)
+─────────────────────────────────────────────────────────────
+Framework:     Next.js 14 (App Router)
+Language:      TypeScript (strict mode, no any types)
+Database:      Supabase (PostgreSQL + pgvector + Realtime + Auth)
+Styling:       Tailwind CSS + shadcn/ui component library
+AI/LLM:        Anthropic Claude API (claude-sonnet-4-20250514)
+Embeddings:    OpenAI text-embedding-3-small via API
+State:         Zustand for client state
+Data fetching: TanStack Query (React Query) v5
+Forms:         React Hook Form + Zod validation
+Email:         Resend API
+Background:    Supabase Edge Functions for async AI processing
+Deployment:    Vercel (frontend) + Supabase (backend)
+
+─────────────────────────────────────────────────────────────
+FOLDER STRUCTURE
+─────────────────────────────────────────────────────────────
+/app                    → Next.js App Router pages
+  /app/(auth)           → login, signup, onboarding
+  /app/(dashboard)      → main app shell
+    /inbox              → commitment inbox
+    /today              → daily planning view
+    /commitments        → full commitment list
+    /waiting-on         → blocked/waiting view
+    /at-risk            → risk dashboard
+    /projects           → project views
+    /settings           → integrations, preferences
+  /app/api              → Next.js API routes
+    /api/webhooks        → Slack, Zoom, Gmail webhooks
+    /api/ai              → AI processing endpoints
+    /api/integrations    → OAuth flows
+
+/components             → Reusable UI components
+  /ui                   → shadcn/ui base components
+  /commitment           → CommitmentCard, CommitmentList, etc.
+  /inbox                → InboxItem, InboxActions
+  /planning             → DailyPlan, TimeBlock
+  /graphs               → CommitmentGraph
+  /shared               → Nav, Sidebar, Header
+
+/lib                    → Utilities and core logic
+  /supabase             → Supabase client (server + client)
+  /ai                   → AI agent functions
+  /integrations         → Slack, Zoom, Gmail, GCal connectors
+  /hooks                → Custom React hooks
+  /utils                → Helpers, formatters, validators
+
+/types                  → TypeScript type definitions
+/supabase               → Supabase migrations and seed data
+  /migrations           → SQL migration files
+  /functions            → Edge functions for async processing
+
+─────────────────────────────────────────────────────────────
+DATABASE SCHEMA OVERVIEW
+─────────────────────────────────────────────────────────────
+Core tables (always keep in mind):
+
+users           → id, email, display_name, workspace_id, role, timezone
+workspaces      → id, name, plan, ai_confidence_threshold, capture_policy
+commitments     → THE CORE TABLE (see full schema in Phase 1 prompt)
+  key fields: id, title, status, owner_id, counterparty, due_date,
+              urgency_score, ai_confidence, source_quote, context_snapshot,
+              ai_reasoning, source_id, embedding (vector 1536)
+sources         → id, type (zoom/slack/gmail/etc), external_id, title, 
+                  url, occurred_at, raw_content, participants
+projects        → id, workspace_id, name, status, owner_id
+commitment_relationships → from_id, to_id, type (blocks/depends_on/etc)
+contacts        → id, workspace_id, name, email, company, crm_id
+integrations    → id, workspace_id, user_id, type, status, oauth tokens
+ai_actions      → full audit log of every AI action with inputs/outputs
+notifications   → id, user_id, commitment_id, type, channel, status
+
+─────────────────────────────────────────────────────────────
+CORE DATA TYPES (TypeScript)
+─────────────────────────────────────────────────────────────
+
+type CommitmentStatus = 
+  'inbox' | 'open' | 'in_progress' | 'blocked' | 
+  'done' | 'delegated' | 'snoozed' | 'dismissed'
+
+type CommitmentType = 
+  'task' | 'request' | 'promise' | 'question' | 
+  'decision' | 'follow_up' | 'reminder'
+
+type SourceType = 
+  'zoom' | 'slack' | 'gmail' | 'google_calendar' | 
+  'browser' | 'manual' | 'jira' | 'github' | 'notion'
+
+type ConfidenceLevel = 'high' | 'medium' | 'low'
+
+type Commitment = {
+  id: string
+  title: string
+  description?: string
+  status: CommitmentStatus
+  type: CommitmentType
+  owner_id?: string
+  counterparty_id?: string
+  project_id?: string
+  due_date?: string
+  due_date_confidence?: number
+  urgency_score: 1 | 2 | 3 | 4 | 5
+  importance_score: 1 | 2 | 3 | 4 | 5
+  effort_estimate_hours?: number
+  ai_confidence: number
+  ai_reasoning?: string
+  source_id?: string
+  source_quote?: string
+  context_snapshot?: Record<string, unknown>
+  risk_score?: number
+  created_by_ai: boolean
+  workspace_id: string
+  created_at: string
+  updated_at: string
+  completed_at?: string
+}
+
+─────────────────────────────────────────────────────────────
+AI ARCHITECTURE — 12 SPECIALIZED AGENTS
+─────────────────────────────────────────────────────────────
+Each AI agent has a single responsibility. Never combine them.
+
+1.  Extractor Agent      → find commitment language in raw text
+2.  Classifier Agent     → type: task/request/promise/question/decision
+3.  Owner Inferencer     → who owns this? with explanation
+4.  Due Date Inferencer  → when is this due? with confidence
+5.  Priority Scorer      → urgency 1-5, importance 1-5
+6.  Effort Estimator     → hours or t-shirt size
+7.  Duplicate Detector   → embedding similarity vs existing corpus
+8.  Dependency Mapper    → blockers and prerequisites
+9.  Risk Detector        → likelihood of slippage
+10. Follow-Up Drafter    → draft email or Slack message
+11. Completion Detector  → did a real-world signal close this?
+12. Memory Agent         → retrieve relevant past commitments
+
+AI CONFIDENCE GATING (critical rule):
+  > 85% confidence  →  auto-create in inbox (requires user review)
+  60-85%            →  surface as suggestion (one-tap confirm)
+  < 60%             →  log only, in "Possible Commitments" view
+
+NEVER auto-approve a commitment without user review.
+ALWAYS attach source_quote and ai_reasoning to every AI extraction.
+
+─────────────────────────────────────────────────────────────
+DESIGN SYSTEM
+─────────────────────────────────────────────────────────────
+Use shadcn/ui as the base. Override with these principles:
+- Primary color: deep navy #1B3A5C
+- Accent color: blue #2E86AB
+- Success: #27AE60  Warning: #E67E22  Danger: #C0392B
+- Font: Inter (system fallback: -apple-system, sans-serif)
+- Every commitment card shows: title, source badge, owner avatar, 
+  due date, urgency indicator, AI confidence bar
+- Source badges are color-coded by type (Zoom=purple, Slack=green, 
+  Gmail=red, Calendar=blue, Manual=gray)
+- AI-suggested items have a distinct visual treatment (dashed border, 
+  AI chip) until approved by user
+- Always show the source quote in a blockquote when available
+- Dark mode supported from day one
+
+─────────────────────────────────────────────────────────────
+CODE QUALITY RULES
+─────────────────────────────────────────────────────────────
+- TypeScript strict mode. No `any`. No implicit returns.
+- All API routes must validate input with Zod schemas
+- All database queries go through typed Supabase client helpers in /lib/supabase
+- All AI calls go through /lib/ai agent functions — never call Claude API directly from components
+- Use Server Components by default; Client Components only when needed (interactivity, hooks)
+- All forms use React Hook Form + Zod
+- All async operations have loading, error, and empty states
+- All AI actions are logged to the ai_actions table (audit trail)
+- All user-facing errors are human-readable, never raw API errors
+- Row Level Security (RLS) must be enabled on ALL Supabase tables
+- Never expose raw transcripts or emails in client-side code
+
+─────────────────────────────────────────────────────────────
+PRIVACY & TRUST RULES (non-negotiable)
+─────────────────────────────────────────────────────────────
+- All AI captures require prior user opt-in per integration
+- Source content (transcripts, emails) stored encrypted, never exposed raw in UI
+- Every AI action shows its reasoning to the user
+- All AI actions are user-reversible (dismiss, edit, undo)
+- Capture settings are per-surface and user-controlled
+- Meeting capture always includes a visible indicator
+- Never process content from a surface the user has not connected
+
+─────────────────────────────────────────────────────────────
+WHAT THIS IS NOT
+─────────────────────────────────────────────────────────────
+- NOT a to-do list app. Commitments are richer than tasks.
+- NOT a meeting notes app. We extract action, not summaries.
+- NOT a project manager. We track promises, not projects.
+- DO NOT suggest adding Gantt charts, Kanban boards, or 
+  time tracking — those are out of scope for MVP.
+- DO NOT simplify the AI pipeline into a single LLM prompt.
+  Each agent is separate and auditable.
+
+# ═══════════════════════════════════════════════════════════
+# PART 2 — PHASE BUILD PROMPTS
+# Use these one at a time in Cursor chat (Cmd+L or Cmd+K)
+# Complete each phase fully before moving to the next.
+# ═══════════════════════════════════════════════════════════
+
+## ▶ PHASE 1 PROMPT — Project Setup + Database Schema + Auth
+### Use this first. Run it in a fresh Next.js project in Cursor.
+
+I am building AI Commitment OS — a Commitment Intelligence Platform 
+that automatically detects and tracks every commitment made across 
+meetings, messages, and emails. See .cursorrules for full context.
+
+TASK: Set up the complete project foundation.
+
+─── STEP 1: Initialize the project ───────────────────────────────
+
+Create a new Next.js 14 project with:
+- TypeScript (strict mode)
+- Tailwind CSS
+- App Router
+- src/ directory structure
+
+Install all dependencies:
+  Core:         next react react-dom typescript
+  UI:           tailwindcss shadcn/ui @radix-ui/react-* lucide-react
+  Database:     @supabase/supabase-js @supabase/ssr
+  State:        zustand
+  Data:         @tanstack/react-query
+  Forms:        react-hook-form zod @hookform/resolvers
+  AI:           @anthropic-ai/sdk openai (for embeddings)
+  Email:        resend
+  Utilities:    date-fns clsx tailwind-merge
+  Dev:          @types/node @types/react eslint prettier
+
+─── STEP 2: Supabase setup ───────────────────────────────────────
+
+Create /lib/supabase/client.ts     → browser Supabase client
+Create /lib/supabase/server.ts     → server Supabase client (cookies)
+Create /lib/supabase/middleware.ts → auth middleware helper
+Create /middleware.ts              → Next.js middleware for session refresh
+
+─── STEP 3: Full database schema ─────────────────────────────────
+
+Create /supabase/migrations/001_initial_schema.sql with the full Phase 1 schema.
+
+─── STEP 4: Environment variables ────────────────────────────────
+
+Create .env.local with:
+  NEXT_PUBLIC_SUPABASE_URL=
+  NEXT_PUBLIC_SUPABASE_ANON_KEY=
+  SUPABASE_SERVICE_ROLE_KEY=
+  ANTHROPIC_API_KEY=
+  OPENAI_API_KEY=
+  RESEND_API_KEY=
+  NEXT_PUBLIC_APP_URL=http://localhost:3000
+  SLACK_CLIENT_ID=
+  SLACK_CLIENT_SECRET=
+  SLACK_SIGNING_SECRET=
+  ZOOM_CLIENT_ID=
+  ZOOM_CLIENT_SECRET=
+  ZOOM_VERIFICATION_TOKEN=
+  GOOGLE_CLIENT_ID=
+  GOOGLE_CLIENT_SECRET=
+
+─── STEP 5: TypeScript types ─────────────────────────────────────
+
+Generate /types/database.ts with full TypeScript types matching 
+every table above. Also create /types/index.ts with all app-level 
+types (Commitment, Source, Integration, etc.) as documented in 
+.cursorrules.
+
+─── STEP 6: Auth flow ─────────────────────────────────────────────
+
+Build complete auth:
+- /app/(auth)/login/page.tsx     → email/password + Google OAuth
+- /app/(auth)/signup/page.tsx    → signup with workspace creation
+- /app/(auth)/callback/page.tsx  → OAuth callback handler
+- /app/(auth)/onboarding/page.tsx → 3-step onboarding:
+    Step 1: Name your workspace
+    Step 2: Connect first integration (Slack, Zoom, or Gmail)
+    Step 3: Import or create your first commitment
+
+## ⚡ Quick Reference Prompts
+
+Context: AI Commitment OS (see .cursorrules for full context).
+Task: Build components, API routes, database queries, and AI agents
+according to the product constraints above.
