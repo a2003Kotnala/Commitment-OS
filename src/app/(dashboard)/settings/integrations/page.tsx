@@ -1,4 +1,4 @@
-import Link from "next/link";
+// import Link from "next/link";
 
 import { providerLabels, type IntegrationProvider } from "@/lib/integrations/types";
 import { createClient } from "@/lib/supabase/server";
@@ -44,12 +44,12 @@ export default async function IntegrationsSettingsPage() {
 
               <div className="flex items-center gap-2">
                 {!isActive ? (
-                  <Link
-                    className="rounded-xl bg-[#1B3A5C] px-3 py-2 text-sm font-medium text-white hover:bg-[#15304B]"
-                    href={`/api/integrations/connect/${provider}`}
-                  >
-                    Connect
-                  </Link>
+                  <a
+                  className="rounded-xl bg-[#1B3A5C] px-3 py-2 text-sm font-medium text-white hover:bg-[#15304B]"
+                  href={`/api/integrations/connect/${provider}`}
+                >
+                  Connect
+                </a>
                 ) : (
                   <form action={`/api/integrations/disconnect/${provider}`} method="post">
                     <button
