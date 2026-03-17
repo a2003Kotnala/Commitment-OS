@@ -15,6 +15,8 @@ import {
   Plug,
 } from "lucide-react";
 
+import { createClient } from "@/lib/supabase/client";
+
 const navigation: Array<{ name: string; href: string; icon: any; badge?: string }> = [
   { name: "Today", href: "/today", icon: CalendarDays },
   { name: "Inbox", href: "/inbox", icon: Inbox, badge: "Live" },
@@ -26,9 +28,26 @@ const navigation: Array<{ name: string; href: string; icon: any; badge?: string 
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const onLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      const supabase = createClient();
+      await supabase.auth.signOut();
+      await fetch("/api/auth/logout", { method: "POST" });
+
+      router.replace("/login");
+      router.refresh();
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
 
   return (
-    <aside className="hidden w-full flex-col bg-white md:flex">
+    <aside className="hidden h-screen w-full flex-col bg-white md:flex">
+      {/* Brand */}
       <div className="flex h-16 shrink-0 items-center px-6">
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#1B3A5C] text-white">
@@ -38,6 +57,7 @@ export function Sidebar() {
         </div>
       </div>
 
+      {/* Nav */}
       <nav className="flex flex-1 flex-col px-4 py-4">
         <ul role="list" className="flex flex-1 flex-col gap-1">
           {navigation.map((item) => {
