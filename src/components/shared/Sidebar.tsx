@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useState } from "react";
 import {
   AlertTriangle,
   CalendarDays,
@@ -9,10 +10,11 @@ import {
   FolderKanban,
   Hourglass,
   Inbox,
+  LogOut,
+  Plug,
   Settings,
   Sparkles,
   User,
-  Plug,
 } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/client";
@@ -47,7 +49,6 @@ export function Sidebar() {
 
   return (
     <aside className="hidden h-screen w-full flex-col bg-white md:flex">
-      {/* Brand */}
       <div className="flex h-16 shrink-0 items-center px-6">
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#1B3A5C] text-white">
@@ -57,7 +58,6 @@ export function Sidebar() {
         </div>
       </div>
 
-      {/* Nav */}
       <nav className="flex flex-1 flex-col px-4 py-4">
         <ul role="list" className="flex flex-1 flex-col gap-1">
           {navigation.map((item) => {
@@ -95,9 +95,9 @@ export function Sidebar() {
             );
           })}
 
-          {/* Hover settings menu (NOT a Settings tab) */}
-          <li className="mt-3">
-            <div className="group rounded-xl px-1 py-1">
+          {/* Settings pinned to bottom with inside-sidebar hover panel */}
+          <li className="mt-auto pt-3">
+            <div className="group relative px-1">
               <div className="flex items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900">
                 <div className="flex items-center gap-3">
                   <Settings className="h-5 w-5 text-slate-400 group-hover:text-slate-600" />
@@ -105,32 +105,57 @@ export function Sidebar() {
                 </div>
               </div>
 
-              <div className="mt-1 hidden flex-col gap-1 pl-10 group-hover:flex">
-                <Link
-                  href="/settings/profile"
-                  className={[
-                    pathname === "/settings/profile"
-                      ? "text-[#1B3A5C]"
-                      : "text-slate-600 hover:text-slate-900",
-                    "inline-flex items-center gap-2 rounded-lg px-2 py-2 text-sm transition hover:bg-slate-50",
-                  ].join(" ")}
-                >
-                  <User className="h-4 w-4 text-slate-400" />
-                  Profile
-                </Link>
+              {/* Panel (inside sidebar, opens upward) */}
+              <div
+                className={[
+                  "absolute bottom-[52px] left-0 right-0 z-50 px-1",
+                  "invisible opacity-0 translate-y-2 scale-[0.99]",
+                  "transition duration-150 ease-out",
+                  "group-hover:visible group-hover:opacity-100 group-hover:translate-y-0 group-hover:scale-100",
+                  "group-focus-within:visible group-focus-within:opacity-100 group-focus-within:translate-y-0 group-focus-within:scale-100",
+                ].join(" ")}
+              >
+                <div className="rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-900/10">
+                  <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-3">
+                    <div className="rounded-2xl bg-[#1B3A5C]/10 p-2 text-[#1B3A5C]">
+                      <Settings className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-slate-900">Settings</p>
+                      <p className="text-xs text-slate-500">Profile, integrations, session</p>
+                    </div>
+                  </div>
 
-                <Link
-                  href="/settings/integrations"
-                  className={[
-                    pathname === "/settings/integrations"
-                      ? "text-[#1B3A5C]"
-                      : "text-slate-600 hover:text-slate-900",
-                    "inline-flex items-center gap-2 rounded-lg px-2 py-2 text-sm transition hover:bg-slate-50",
-                  ].join(" ")}
-                >
-                  <Plug className="h-4 w-4 text-slate-400" />
-                  Integrations
-                </Link>
+                  <div className="p-2">
+                    <Link
+                      href="/settings/profile"
+                      className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-900 hover:bg-slate-50"
+                    >
+                      <User className="h-4 w-4 text-slate-400" />
+                      Profile
+                    </Link>
+
+                    <Link
+                      href="/settings/integrations"
+                      className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-900 hover:bg-slate-50"
+                    >
+                      <Plug className="h-4 w-4 text-slate-400" />
+                      Integrations
+                    </Link>
+
+                    <button
+                      type="button"
+                      onClick={onLogout}
+                      disabled={isLoggingOut}
+                      className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-slate-900 hover:bg-slate-50 disabled:opacity-60"
+                    >
+                      <LogOut className="h-4 w-4 text-slate-400" />
+                      {isLoggingOut ? "Signing out..." : "Logout"}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mx-auto mt-1 h-2 w-2 rotate-45 border-b border-r border-slate-200 bg-white" />
               </div>
             </div>
           </li>
