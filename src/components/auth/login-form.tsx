@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Mail } from "lucide-react";
@@ -18,7 +18,7 @@ import { createClient } from "@/lib/supabase/client";
 
 const loginSchema = z.object({
   email: z.string().email("Enter a valid work email."),
-  password: z.string().min(8, "Password must be at least 8 characters.")
+  password: z.string().min(8, "Password must be at least 8 characters."),
 });
 
 type LoginValues = z.infer<typeof loginSchema>;
@@ -32,24 +32,70 @@ export function LoginForm({ initialError }: LoginFormProps) {
   const [isGooglePending, startGoogleTransition] = useTransition();
   const [formError, setFormError] = useState<string | undefined>(initialError);
   const [successMessage, setSuccessMessage] = useState<string>();
+
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting }
+    formState: { errors, isSubmitting },
   } = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
       email: "",
-      password: ""
-    }
+      password: "",
+    },
   });
+
+  useEffect(() => {
+    setFormError(initialError);
+  }, [initialError]);
+
+  useEffect(() => {
+    if (!hasSupabaseEnv()) {
+      return;
+    }
+
+    const supabase = createClient();
+
+    const checkAndRedirectIfAuthenticated = async () => {
+      const { data, error } = await supabase.auth.getUser();
+
+      if (error || !data.user) {
+        return;
+      }
+
+      const { data: profile } = await supabase
+        .from("users")
+        .select("workspace_id,onboarding_completed")
+        .eq("id", data.user.id)
+        .maybeSingle();
+
+      const nextPath =
+        profile?.workspace_id && profile.onboarding_completed ? "/inbox" : "/onboarding";
+
+      router.replace(nextPath);
+      router.refresh();
+    };
+
+    // Run once on mount
+    void checkAndRedirectIfAuthenticated();
+
+    // Handle browser back/forward cache restores
+    const handlePageShow = () => {
+      void checkAndRedirectIfAuthenticated();
+    };
+
+    window.addEventListener("pageshow", handlePageShow);
+    return () => window.removeEventListener("pageshow", handlePageShow);
+  }, [router]);
 
   const onSubmit = handleSubmit(async (values) => {
     setFormError(undefined);
     setSuccessMessage(undefined);
 
     if (!hasSupabaseEnv()) {
-      setFormError("Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY before signing in.");
+      setFormError(
+        "Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY before signing in.",
+      );
       return;
     }
 
@@ -68,7 +114,9 @@ export function LoginForm({ initialError }: LoginFormProps) {
       .maybeSingle();
 
     if (profileError) {
-      setFormError("Signed in, but I could not load your profile. Check your database migration.");
+      setFormError(
+        "Signed in, but I could not load your profile. Check your database migration.",
+      );
       return;
     }
 
@@ -93,8 +141,8 @@ export function LoginForm({ initialError }: LoginFormProps) {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${env.NEXT_PUBLIC_APP_URL}/callback`
-        }
+          redirectTo: `${env.NEXT_PUBLIC_APP_URL}/callback`,
+        },
       });
 
       if (error) {
@@ -106,8 +154,17 @@ export function LoginForm({ initialError }: LoginFormProps) {
   return (
     <Card className="border-slate-200">
       <CardContent className="space-y-6 p-6">
-        <Button className="w-full" onClick={handleGoogleSignIn} type="button" variant="outline">
-          {isGooglePending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Mail className="mr-2 h-4 w-4" />}
+        <Button
+          className="w-full"
+          onClick={handleGoogleSignIn}
+          type="button"
+          variant="outline"
+        >
+          {isGooglePending ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Mail className="mr-2 h-4 w-4" />
+          )}
           Continue with Google
         </Button>
 
@@ -123,9 +180,15 @@ export function LoginForm({ initialError }: LoginFormProps) {
         <form className="space-y-5" onSubmit={onSubmit}>
           <div className="space-y-2">
             <Label htmlFor="email">Work email</Label>
-            <Input id="email" placeholder="founder@company.com" type="email" {...register("email")} />
+            <Input
+              id="email"
+              placeholder="founder@company.com"
+              type="email"
+              {...register("email")}
+            />
             <FormMessage message={errors.email?.message} />
           </div>
+
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="password">Password</Label>
@@ -136,8 +199,10 @@ export function LoginForm({ initialError }: LoginFormProps) {
             <Input id="password" type="password" {...register("password")} />
             <FormMessage message={errors.password?.message} />
           </div>
+
           <FormMessage message={formError} />
           <FormMessage message={successMessage} tone="success" />
+
           <Button className="w-full" disabled={isSubmitting} type="submit">
             {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             Sign in
