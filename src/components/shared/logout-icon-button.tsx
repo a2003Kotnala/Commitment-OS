@@ -10,12 +10,9 @@ import { createClient } from "@/lib/supabase/client";
 export function LogoutIconButton() {
   const router = useRouter();
   const [isPending, setIsPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const onLogout = async () => {
-    setError(null);
     setIsPending(true);
-
     try {
       const supabase = createClient();
       await supabase.auth.signOut();
@@ -23,28 +20,22 @@ export function LogoutIconButton() {
 
       router.replace("/login");
       router.refresh();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Logout failed.");
     } finally {
       setIsPending(false);
     }
   };
 
   return (
-    <div className="flex flex-col items-end gap-2">
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        onClick={onLogout}
-        disabled={isPending}
-        className="gap-2"
-      >
-        <LogOut className="h-4 w-4" />
-        {isPending ? "Signing out..." : "Logout"}
-      </Button>
-
-      {error ? <p className="text-xs text-rose-600">{error}</p> : null}
-    </div>
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      onClick={onLogout}
+      disabled={isPending}
+      className="gap-2"
+    >
+      <LogOut className="h-4 w-4" />
+      {isPending ? "..." : "Logout"}
+    </Button>
   );
 }
