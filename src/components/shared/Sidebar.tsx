@@ -54,7 +54,9 @@ export function Sidebar() {
           <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#1B3A5C] text-white">
             <Sparkles className="h-4 w-4" />
           </div>
-          <span className="font-semibold tracking-tight text-slate-900">Commitment OS</span>
+          <span className="font-semibold tracking-tight text-slate-900">
+            Commitment OS
+          </span>
         </div>
       </div>
 
@@ -77,7 +79,9 @@ export function Sidebar() {
                   <div className="flex items-center gap-3">
                     <item.icon
                       className={[
-                        isActive ? "text-[#2E86AB]" : "text-slate-400 group-hover:text-slate-600",
+                        isActive
+                          ? "text-[#2E86AB]"
+                          : "text-slate-400 group-hover:text-slate-600",
                         "h-5 w-5 shrink-0",
                       ].join(" ")}
                       aria-hidden="true"
@@ -95,9 +99,10 @@ export function Sidebar() {
             );
           })}
 
-          {/* Settings pinned to bottom with inside-sidebar hover panel */}
+          {/* Settings pinned to bottom */}
           <li className="mt-auto pt-3">
             <div className="group relative px-1">
+              {/* Trigger */}
               <div className="flex items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900">
                 <div className="flex items-center gap-3">
                   <Settings className="h-5 w-5 text-slate-400 group-hover:text-slate-600" />
@@ -105,24 +110,31 @@ export function Sidebar() {
                 </div>
               </div>
 
-              {/* Panel (inside sidebar, opens upward) */}
+              {/* Popup: bottom-full removes the gap */}
               <div
                 className={[
-                  "absolute bottom-[52px] left-0 right-0 z-50 px-1",
+                  "absolute bottom-full left-0 right-0 z-50 px-1 pb-2",
                   "invisible opacity-0 translate-y-2 scale-[0.99]",
                   "transition duration-150 ease-out",
                   "group-hover:visible group-hover:opacity-100 group-hover:translate-y-0 group-hover:scale-100",
                   "group-focus-within:visible group-focus-within:opacity-100 group-focus-within:translate-y-0 group-focus-within:scale-100",
                 ].join(" ")}
               >
-                <div className="rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-900/10">
+                <div className="relative rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-900/10">
+                  {/* Arrow is INSIDE and overlaps downward => no dead gap */}
+                  <div className="absolute left-1/2 -bottom-1 h-2 w-2 -translate-x-1/2 rotate-45 border-b border-r border-slate-200 bg-white" />
+
                   <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-3">
                     <div className="rounded-2xl bg-[#1B3A5C]/10 p-2 text-[#1B3A5C]">
                       <Settings className="h-4 w-4" />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-slate-900">Settings</p>
-                      <p className="text-xs text-slate-500">Profile, integrations, session</p>
+                      <p className="text-sm font-semibold text-slate-900">
+                        Settings
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        Profile, integrations, session
+                      </p>
                     </div>
                   </div>
 
@@ -154,8 +166,6 @@ export function Sidebar() {
                     </button>
                   </div>
                 </div>
-
-                <div className="mx-auto mt-1 h-2 w-2 rotate-45 border-b border-r border-slate-200 bg-white" />
               </div>
             </div>
           </li>
