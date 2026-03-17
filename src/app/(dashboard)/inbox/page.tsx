@@ -1,15 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import {
-  AlertCircle,
-  Inbox,
-  RefreshCw,
-  Search,
-  Sparkles,
-} from "lucide-react";
+import { AlertCircle, Inbox, RefreshCw, Search, Sparkles } from "lucide-react";
 
 import { CommitmentList } from "@/components/commitment/CommitmentList";
+import { LogoutIconButton } from "@/components/shared/logout-icon-button";
 import {
   useApproveCommitment,
   useCommitments,
@@ -49,7 +44,9 @@ function LoadingSkeleton() {
 
 export default function InboxPage() {
   const [searchValue, setSearchValue] = useState("");
-  const [selectedCommitmentId, setSelectedCommitmentId] = useState<string | null>(null);
+  const [selectedCommitmentId, setSelectedCommitmentId] = useState<string | null>(
+    null,
+  );
 
   const {
     data: commitments = [],
@@ -71,8 +68,8 @@ export default function InboxPage() {
     }
 
     return commitments.filter((commitment) =>
-      [commitment.title, commitment.type, commitment.source_quote].some(
-        (field) => field.toLowerCase().includes(query),
+      [commitment.title, commitment.type, commitment.source_quote].some((field) =>
+        field.toLowerCase().includes(query),
       ),
     );
   }, [commitments, searchValue]);
@@ -93,16 +90,14 @@ export default function InboxPage() {
   }, [filteredCommitments, selectedCommitmentId]);
 
   const aiSuggestedCount = commitments.filter(
-    (commitment) =>
-      commitment.created_by_ai && commitment.status === "inbox",
+    (commitment) => commitment.created_by_ai && commitment.status === "inbox",
   ).length;
 
   const highConfidenceCount = commitments.filter(
     (commitment) => normalizeConfidence(commitment.ai_confidence) >= 85,
   ).length;
 
-  const mutationError =
-    approveCommitment.error ?? dismissCommitment.error;
+  const mutationError = approveCommitment.error ?? dismissCommitment.error;
 
   const emptyStateTitle =
     commitments.length === 0
@@ -151,6 +146,10 @@ export default function InboxPage() {
         </div>
 
         <div className="flex w-full flex-col gap-3 lg:max-w-xl">
+          <div className="flex justify-end">
+            <LogoutIconButton />
+          </div>
+
           <div className="relative">
             <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
 
@@ -256,9 +255,7 @@ export default function InboxPage() {
           onApprove={(id) => approveCommitment.mutate(id)}
           onDismiss={(id) => dismissCommitment.mutate(id)}
           approvingId={
-            approveCommitment.isPending
-              ? approveCommitment.variables ?? null
-              : null
+            approveCommitment.isPending ? approveCommitment.variables ?? null : null
           }
           dismissingId={
             dismissCommitment.isPending
