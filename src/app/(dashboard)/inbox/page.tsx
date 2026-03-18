@@ -4,11 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import { AlertCircle, Inbox, RefreshCw, Search, Sparkles } from "lucide-react";
 
 import { CommitmentList } from "@/components/commitment/CommitmentList";
-import { LogoutIconButton } from "@/components/shared/logout-icon-button";
+import { useProjects } from "@/lib/hooks/useProjects";
 import {
   useApproveCommitment,
   useCommitments,
   useDismissCommitment,
+  useUpdateCommitmentFields,
 } from "@/lib/hooks/useCommitments";
 
 function normalizeConfidence(value: number): number {
@@ -44,9 +45,7 @@ function LoadingSkeleton() {
 
 export default function InboxPage() {
   const [searchValue, setSearchValue] = useState("");
-  const [selectedCommitmentId, setSelectedCommitmentId] = useState<string | null>(
-    null,
-  );
+  const [selectedCommitmentId, setSelectedCommitmentId] = useState<string | null>(null);
 
   const {
     data: commitments = [],
@@ -57,21 +56,29 @@ export default function InboxPage() {
     refetch,
   } = useCommitments();
 
+  const { data: projects = [] } = useProjects();
+
   const approveCommitment = useApproveCommitment();
   const dismissCommitment = useDismissCommitment();
+  const updateFields = useUpdateCommitmentFields();
 
   const filteredCommitments = useMemo(() => {
     const query = searchValue.trim().toLowerCase();
+    if (!query) return commitments;
 
-    if (!query) {
-      return commitments;
-    }
+    return commitments.filter((commitment) => {
+      const haystack = [
+        commitment.title,
+        commitment.type,
+        commitment.source_quote,
+        commitment.source?.type ?? "",
+        commitment.source?.title ?? "",
+      ]
+        .join(" ")
+        .toLowerCase();
 
-    return commitments.filter((commitment) =>
-      [commitment.title, commitment.type, commitment.source_quote].some((field) =>
-        field.toLowerCase().includes(query),
-      ),
-    );
+      return haystack.includes(query);
+    });
   }, [commitments, searchValue]);
 
   useEffect(() => {
@@ -80,34 +87,22 @@ export default function InboxPage() {
       return;
     }
 
-    const hasSelectedCommitment = filteredCommitments.some(
-      (commitment) => commitment.id === selectedCommitmentId,
-    );
-
-    if (!hasSelectedCommitment) {
-      setSelectedCommitmentId(filteredCommitments[0].id);
-    }
+    const hasSelected = filteredCommitments.some((c) => c.id === selectedCommitmentId);
+    if (!hasSelected) setSelectedCommitmentId(filteredCommitments[0].id);
   }, [filteredCommitments, selectedCommitmentId]);
 
-  const aiSuggestedCount = commitments.filter(
-    (commitment) => commitment.created_by_ai && commitment.status === "inbox",
-  ).length;
+  const aiSuggestedCount = commitments.filter((c) => c.created_by_ai && c.status === "inbox").length;
+  const highConfidenceCount = commitments.filter((c) => normalizeConfidence(c.ai_confidence) >= 85).length;
 
-  const highConfidenceCount = commitments.filter(
-    (commitment) => normalizeConfidence(commitment.ai_confidence) >= 85,
-  ).length;
-
-  const mutationError = approveCommitment.error ?? dismissCommitment.error;
+  const mutationError = approveCommitment.error ?? dismissCommitment.error ?? updateFields.error;
 
   const emptyStateTitle =
-    commitments.length === 0
-      ? "Your inbox is clear"
-      : "No commitments match this search";
+    commitments.length === 0 ? "Your inbox is clear" : "No tasks match this search";
 
   const emptyStateDescription =
     commitments.length === 0
-      ? "New commitments from Slack, Zoom, Gmail, and Calendar will appear here once ingestion is connected."
-      : "Try a broader title, source quote, or source type search.";
+      ? "New captured items from Slack, Outlook, meetings, and manual paste will show here."
+      : "Try a broader search (title, quote, source, platform).";
 
   return (
     <section className="flex h-full flex-col gap-6">
@@ -120,13 +115,10 @@ export default function InboxPage() {
 
           <div>
             <h1 className="text-3xl font-semibold tracking-tight text-slate-900">
-              Review detected commitments
+              Triage captured tasks
             </h1>
-
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-              Approve what should become active work, dismiss the noise, and
-              prepare the right rail for deeper context once selection state is
-              shared globally.
+              Approve real work, dismiss noise, and set priority/due date/project before it hits Today.
             </p>
           </div>
 
@@ -136,7 +128,7 @@ export default function InboxPage() {
             </div>
 
             <div className="rounded-full bg-[#2E86AB]/10 px-3 py-1.5 text-[#1B3A5C] ring-1 ring-[#2E86AB]/10">
-              {aiSuggestedCount} AI suggested
+              {aiSuggestedCount} suggested
             </div>
 
             <div className="rounded-full bg-white px-3 py-1.5 shadow-sm ring-1 ring-slate-200">
@@ -146,17 +138,12 @@ export default function InboxPage() {
         </div>
 
         <div className="flex w-full flex-col gap-3 lg:max-w-xl">
-          <div className="flex justify-end">
-            <LogoutIconButton />
-          </div>
-
           <div className="relative">
             <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-
             <input
               value={searchValue}
               onChange={(event) => setSearchValue(event.target.value)}
-              placeholder="Search title, source quote, or source type"
+              placeholder="Search title, quote, source, platform"
               className="h-12 w-full rounded-2xl border border-slate-200 bg-white pl-11 pr-4 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-[#2E86AB] focus:ring-4 focus:ring-[#2E86AB]/10"
             />
           </div>
@@ -164,17 +151,13 @@ export default function InboxPage() {
           <div className="flex items-center justify-between text-xs text-slate-500">
             <span>
               {searchValue.trim().length > 0
-                ? `${filteredCommitments.length} matching result${
-                    filteredCommitments.length === 1 ? "" : "s"
-                  }`
-                : "Live inbox synced from Supabase Realtime"}
+                ? `${filteredCommitments.length} matching result${filteredCommitments.length === 1 ? "" : "s"}`
+                : "Live inbox (Supabase Realtime)"}
             </span>
 
             <button
               type="button"
-              onClick={() => {
-                void refetch();
-              }}
+              onClick={() => void refetch()}
               disabled={isRefetching}
               className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 font-medium text-slate-600 transition hover:bg-white hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
             >
@@ -188,10 +171,7 @@ export default function InboxPage() {
       {mutationError ? (
         <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           <AlertCircle className="mt-0.5 h-4 w-4 flex-none" />
-          <p>
-            {mutationError.message ||
-              "Something went wrong while updating a commitment."}
-          </p>
+          <p>{mutationError.message || "Something went wrong while updating a task."}</p>
         </div>
       ) : null}
 
@@ -207,7 +187,7 @@ export default function InboxPage() {
             <div className="space-y-4">
               <div>
                 <h2 className="text-lg font-semibold text-slate-900">
-                  Could not load inbox commitments
+                  Could not load Inbox
                 </h2>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
                   {error instanceof Error
@@ -218,9 +198,7 @@ export default function InboxPage() {
 
               <button
                 type="button"
-                onClick={() => {
-                  void refetch();
-                }}
+                onClick={() => void refetch()}
                 className="inline-flex items-center gap-2 rounded-xl bg-[#1B3A5C] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#15304B]"
               >
                 <RefreshCw className="h-4 w-4" />
@@ -232,17 +210,10 @@ export default function InboxPage() {
       ) : filteredCommitments.length === 0 ? (
         <div className="rounded-3xl border border-slate-200 bg-white p-10 text-center shadow-sm">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#2E86AB]/10 text-[#1B3A5C]">
-            {commitments.length === 0 ? (
-              <Inbox className="h-6 w-6" />
-            ) : (
-              <Sparkles className="h-6 w-6" />
-            )}
+            {commitments.length === 0 ? <Inbox className="h-6 w-6" /> : <Sparkles className="h-6 w-6" />}
           </div>
 
-          <h2 className="mt-4 text-xl font-semibold text-slate-900">
-            {emptyStateTitle}
-          </h2>
-
+          <h2 className="mt-4 text-xl font-semibold text-slate-900">{emptyStateTitle}</h2>
           <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-600">
             {emptyStateDescription}
           </p>
@@ -250,18 +221,14 @@ export default function InboxPage() {
       ) : (
         <CommitmentList
           commitments={filteredCommitments}
+          projects={projects}
           selectedCommitmentId={selectedCommitmentId}
-          onSelect={(commitment) => setSelectedCommitmentId(commitment.id)}
+          onSelect={(c) => setSelectedCommitmentId(c.id)}
           onApprove={(id) => approveCommitment.mutate(id)}
           onDismiss={(id) => dismissCommitment.mutate(id)}
-          approvingId={
-            approveCommitment.isPending ? approveCommitment.variables ?? null : null
-          }
-          dismissingId={
-            dismissCommitment.isPending
-              ? dismissCommitment.variables ?? null
-              : null
-          }
+          onUpdate={(input) => updateFields.mutate(input)}
+          approvingId={approveCommitment.isPending ? approveCommitment.variables ?? null : null}
+          dismissingId={dismissCommitment.isPending ? dismissCommitment.variables ?? null : null}
         />
       )}
     </section>
