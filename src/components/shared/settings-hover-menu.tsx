@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { LogOut, Plug, Settings, Users, User } from "lucide-react";
+import { LogOut, Plug, Settings, Users, Wand2, User } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
@@ -80,7 +80,9 @@ export function SettingsHoverMenu({
           avoidCollisions
           className={cn(
             "z-50 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-900/10",
+            // Dynamic sizing for small screens:
             "w-[min(18rem,calc(100vw-1rem))]",
+            // Dynamic height so it never looks broken on small laptops:
             "max-h-[min(70vh,420px)] overflow-y-auto",
           )}
         >
@@ -104,6 +106,16 @@ export function SettingsHoverMenu({
               >
                 <User className="h-4 w-4 text-slate-400" />
                 Profile
+              </Link>
+            </DropdownMenu.Item>
+
+            <DropdownMenu.Item asChild>
+              <Link
+                href="/manage-me"
+                className="flex select-none items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-900 outline-none focus:bg-slate-50"
+              >
+                <Wand2 className="h-4 w-4 text-slate-400" />
+                Manage Me
               </Link>
             </DropdownMenu.Item>
 
